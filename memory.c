@@ -65,8 +65,9 @@ static int onebyte_init(void)
 		onebyte_exit();
 		return -ENOMEM;
 	}
+	memset(onebyte_data,0,1);
 	*onebyte_data = 'X';
-	printk(KERN_ALERT "This is a One Byte device Module\n";
+	printk(KERN_ALERT "This is a One Byte device Module\n");
 	return 0;
 }
 
@@ -79,8 +80,31 @@ static void onebyte_exit(void)
 		onebyte_data = NULL;
 	}
 	unregister_chrdev(MAJOR_NUMBER,"onebyte");
-	printk(KERN_ALERT "One Byte Device Module is unloaded\n";
+	printk(KERN_ALERT "One Byte Device Module is unloaded\n");
 }
+
+ssize_t onebyte_read(struct file *filep,char *buf,size_t count,loff_t *f_pos)
+{
+	copy_to_user(buf,onebyte_data,1);
+	
+	if(*f_pos == 0)
+	{
+		*f_pos+=1;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_pos)
+{
+	char *tmp;
+	tmp=buf+count-1;
+	copy_from_user(onebyte_data,tmp,1);
+	return 1;
+} 
 
 MODULE_LICENSE("GPL");
 module_init(onebyte_init);
