@@ -8,7 +8,7 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 
-#define MAJOR_NUMBER 61
+#define MAJOR_NUMBER 72
 
 /* Forward Declaration */
 
@@ -65,7 +65,7 @@ static int onebyte_init(void)
 		onebyte_exit();
 		return -ENOMEM;
 	}
-	memset(onebyte_data,0,1);
+	//memset(onebyte_data,0,1);
 	*onebyte_data = 'X';
 	printk(KERN_ALERT "This is a One Byte device Module\n");
 	return 0;
@@ -85,26 +85,38 @@ static void onebyte_exit(void)
 
 ssize_t onebyte_read(struct file *filep,char *buf,size_t count,loff_t *f_pos)
 {
-	copy_to_user(buf,onebyte_data,1);
 	
-	if(*f_pos == 0)
-	{
-		*f_pos+=1;
+	char *tmp;
+	tmp=onebyte_data;
+	
+	//printk(KERN_INFO "%d",sizeof(onebyte_data));
+
+
+	if(*f_pos == 0){
+		copy_to_user(buf,tmp,1);
+		*f_pos += 1;
 		return 1;
 	}
 	else
-	{
 		return 0;
-	}
+	
 }
 
 ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_pos)
 {
 	char *tmp;
-	tmp=buf+count-1;
+	if(count == 1){
+	tmp = buf+count-1;
+	printk(KERN_INFO "%d",count);
 	copy_from_user(onebyte_data,tmp,1);
 	return 1;
-} 
+	}
+	else{
+	tmp = buf + count - count;
+	printk(KERN_INFO "%d",count);
+	copy_from_user(onebyte_data,tmp,1);
+	return count;}
+}
 
 MODULE_LICENSE("GPL");
 module_init(onebyte_init);
