@@ -115,7 +115,7 @@ ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_
 	tmp = buf + count - count;
 	printk(KERN_INFO "%d",count);
 	copy_from_user(onebyte_data,tmp,1);
-	return count;}
+	return -ENOSPC;}
 }
 
 MODULE_LICENSE("GPL");
