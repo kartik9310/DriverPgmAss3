@@ -9,6 +9,7 @@
 #include <asm/uaccess.h> /*copy_from_user and copy_to_user methods usage */
 
 #define MAJOR_NUMBER 72 /* Device number to be used for registration */
+#define MAX_LENGTH 1048576
 
 /* Forward Declaration */
 
@@ -24,13 +25,16 @@ static void onebyte_exit(void); //device module exit method
 
 static int onebyte_init(void);// device module initialization method
 
+static loff_t onebyte_lseek(struct file *file,loff_t offset,int origin);
+
 /* Definition of File Operation Structure */
 
 struct file_operations onebyte_fops = {
 	read: onebyte_read,
 	write: onebyte_write,
 	open: onebyte_open,
-	release: onebyte_release
+	release: onebyte_release,
+	llseek: onebyte_lseek
 };
 
 char *onebyte_data = NULL; //Buffer to store the data
@@ -65,7 +69,7 @@ static int onebyte_init(void)
 	
 	//Allocating one byte of memory using kmalloc and freeing using kfree
 
-	onebyte_data = kmalloc(sizeof(char),GFP_KERNEL);
+	onebyte_data = kmalloc(MAX_LENGTH,GFP_KERNEL);
 	
 	if(!onebyte_data)
 	{
@@ -74,7 +78,7 @@ static int onebyte_init(void)
 	}
 	//memset(onebyte_data,0,1);
 	*onebyte_data = 'X';
-	printk(KERN_ALERT "This is a One Byte device Module\n");
+	printk(KERN_ALERT "This is a 4 MegaByte device Module\n");
 	return 0;
 }
 
@@ -88,7 +92,7 @@ static void onebyte_exit(void)
 		onebyte_data = NULL;
 	}
 	unregister_chrdev(MAJOR_NUMBER,"onebyte");
-	printk(KERN_ALERT "One Byte Device Module is unloaded\n");
+	printk(KERN_ALERT "4 MegaByte Device Module is unloaded\n");
 }
 
 //Reading the device file
@@ -96,39 +100,76 @@ static void onebyte_exit(void)
 ssize_t onebyte_read(struct file *filep,char *buf,size_t count,loff_t *f_pos)
 {
 	
-	char *tmp;
-	tmp=onebyte_data;
+	int max_bytes;
+	int bytes_to_do;
+	int nbytes;
 	
-	//printk(KERN_INFO "%d",sizeof(onebyte_data));
+		
+	max_bytes = MAX_LENGTH-*f_pos;
+	
+	if(max_bytes >= count) bytes_to_do = count;
+	else bytes_to_do = max_bytes;
 
-
-	if(*f_pos == 0){
-		copy_to_user(buf,tmp,1); //Transferring the data to the User Space
-		*f_pos += 1;
-		return 1;
+	if(bytes_to_do == 0)
+	{
+		printk("reached End of Device");
+		return 0;
 	}
-	else
-		return 0; //End of the file so return 0
-	
+	nbytes = bytes_to_do - copy_to_user(buf,onebyte_data+*f_pos,bytes_to_do);
+	*f_pos+=nbytes;
+	return nbytes;	
+		
+
 }
 
 //Writing to a device file
 
 ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_pos)
 {
-	char *tmp;
-	if(count == 1){
-	tmp = buf+count-1;
-	printk(KERN_INFO "%d",count); // For knowing the number of bytes in the buffer in dmesg command
-	copy_from_user(onebyte_data,tmp,1); // Transfering the data from user space to kernel space
-	return 1;//Number of bytes written on the device returned as a constant
+
+
+
+	int nbytes;
+	int bytes_to_do;
+	int max_bytes;
+	
+		
+	max_bytes = MAX_LENGTH-*f_pos;
+	if(max_bytes > count) bytes_to_do = count;
+	else bytes_to_do = max_bytes;
+	
+	if(bytes_to_do == 0)
+	{
+		printk("reached End of Device");
+		return -ENOSPC;
 	}
-	else{
-	tmp = buf + count - count;
-	printk(KERN_INFO "%d",count);
-	copy_from_user(onebyte_data,tmp,1);
-	return -ENOSPC;}// Returns the bash error to kernel that the buffer has more number of characters than expected. More than 1 (one byte device). Hence, Returns the bash Error No space left on the device.
+	
+	nbytes = bytes_to_do - copy_from_user(onebyte_data+*f_pos,buf,bytes_to_do);
+	*f_pos+=nbytes;
+	printk("Number of bytes written:%d",nbytes);
+	return nbytes;
+	
+		
 }
+
+static loff_t onebyte_lseek(struct file *file,loff_t offset,int origin)
+{
+	loff_t new_pos = 0;
+	switch(origin)
+	{
+		case 0: new_pos = offset;
+			break;
+		case 1: new_pos = file->f_pos + offset;
+			break;
+		case 2: new_pos = MAX_LENGTH - offset;
+			break;
+	}
+	if(new_pos > MAX_LENGTH) new_pos = MAX_LENGTH;
+	if(new_pos < 0)	new_pos = 0;
+	file->f_pos = new_pos;
+	return new_pos;
+}
+
 
 MODULE_LICENSE("GPL");
 module_init(onebyte_init); //Module Initialization method called
