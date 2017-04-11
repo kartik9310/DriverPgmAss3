@@ -9,10 +9,11 @@
 #include <asm/uaccess.h> /*copy_from_user and copy_to_user methods usage */
 #include <linux/ioctl.h>
 #define SCULL_IOC_MAGIC 'k'
-#define SCULL_HELLO_IO(SCULL_IOC_MAGIC,1);
+#define SCULL_HELLO _IO(SCULL_IOC_MAGIC,1)
+#define SCULL_IOC_MAXNR 14
 
 #define MAJOR_NUMBER 72 /* Device number to be used for registration */
-#define MAX_LENGTH 13
+#define MAX_LENGTH 3
 
 /* Forward Declaration */
 
@@ -30,6 +31,8 @@ static int onebyte_init(void);// device module initialization method
 
 static loff_t onebyte_lseek(struct file *file,loff_t offset,int origin);
 
+static long ioctl_example(struct file *filep,unsigned int cmd,unsigned long arg);
+
 /* Definition of File Operation Structure */
 
 struct file_operations onebyte_fops = {
@@ -37,7 +40,8 @@ struct file_operations onebyte_fops = {
 	write: onebyte_write,
 	open: onebyte_open,
 	release: onebyte_release,
-	llseek: onebyte_lseek
+	llseek: onebyte_lseek,
+	.unlocked_ioctl = ioctl_example
 };
 
 char *onebyte_data = NULL; //Buffer to store the data
@@ -172,6 +176,32 @@ static loff_t onebyte_lseek(struct file *file,loff_t offset,int origin)
 	if(new_pos < 0)	new_pos = 0;
 	file->f_pos = new_pos;
 	return new_pos;
+}
+
+static long ioctl_example(struct file *filep,unsigned int cmd,unsigned long arg)
+{
+	int err=0,tmp;
+	int retval=0;
+
+	if(_IOC_TYPE(cmd)!=SCULL_IOC_MAGIC) return -ENOTTY;
+	if(_IOC_NR(cmd) > SCULL_IOC_MAXNR) return -ENOTTY;
+
+	if(_IOC_DIR(cmd)&_IOC_READ)
+	err = !access_ok(VERIFY_WRITE,(void __user*)arg,_IOC_SIZE(cmd));
+	
+	else if(_IOC_DIR(cmd)&_IOC_WRITE)
+	err = !access_ok(VERIFY_READ,(void __user*)arg,_IOC_SIZE(cmd));
+
+	if(err) return -EFAULT;
+
+	switch(cmd)
+	{
+		case SCULL_HELLO: printk(KERN_WARNING "hello\n");
+					break;
+		default: return -ENOTTY;
+	}
+	
+	return retval;
 }
 
 
