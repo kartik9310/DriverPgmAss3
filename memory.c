@@ -7,9 +7,12 @@
 #include <linux/fs.h> /* For all the file operations going to be performed */
 #include <linux/proc_fs.h> /* For File system structures implementation */
 #include <asm/uaccess.h> /*copy_from_user and copy_to_user methods usage */
+#include <linux/ioctl.h>
+#define SCULL_IOC_MAGIC 'k'
+#define SCULL_HELLO_IO(SCULL_IOC_MAGIC,1);
 
 #define MAJOR_NUMBER 72 /* Device number to be used for registration */
-#define MAX_LENGTH 1048576
+#define MAX_LENGTH 13
 
 /* Forward Declaration */
 
@@ -112,7 +115,7 @@ ssize_t onebyte_read(struct file *filep,char *buf,size_t count,loff_t *f_pos)
 
 	if(bytes_to_do == 0)
 	{
-		printk("reached End of Device");
+		//printk("reached End of Device");
 		return 0;
 	}
 	nbytes = bytes_to_do - copy_to_user(buf,onebyte_data+*f_pos,bytes_to_do);
@@ -140,13 +143,13 @@ ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_
 	
 	if(bytes_to_do == 0)
 	{
-		printk("reached End of Device");
+		//printk("reached End of Device");
 		return -ENOSPC;
 	}
 	
 	nbytes = bytes_to_do - copy_from_user(onebyte_data+*f_pos,buf,bytes_to_do);
 	*f_pos+=nbytes;
-	printk("Number of bytes written:%d",nbytes);
+	printk("\nNumber of bytes written:%d",nbytes);
 	return nbytes;
 	
 		
@@ -155,6 +158,7 @@ ssize_t onebyte_write(struct file *filep,const char *buf,size_t count,loff_t *f_
 static loff_t onebyte_lseek(struct file *file,loff_t offset,int origin)
 {
 	loff_t new_pos = 0;
+	printk("\n lseek system call working");
 	switch(origin)
 	{
 		case 0: new_pos = offset;
