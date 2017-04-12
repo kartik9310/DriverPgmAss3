@@ -197,6 +197,8 @@ static long ioctl_example(struct file *filep,unsigned int cmd,unsigned long arg)
 	switch(cmd)
 	{
 		case SCULL_HELLO: printk(KERN_WARNING "hello\n");
+				  printk(KERN_WARNING "IOCTL_IOWR_TESTING\n");
+				  printk("The Recieved Message is: Hi,Kartik!!");	
 					break;
 		default: return -ENOTTY;
 	}
